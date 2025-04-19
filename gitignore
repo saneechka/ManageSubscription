@@ -1,0 +1,110 @@
+# General
+.DS_Store
+*.log
+*.swp
+*.swo
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.idea/
+.vscode/
+*.iml
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*_test.go
+# Dependency directories
+node_modules/
+bower_components/
+jspm_packages/
+.vendor/
+vendor/
+
+# Build directories
+dist/
+build/
+out/
+bin/
+.serverless/
+.next/
+.cache/
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Go specific
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go module files (if you don't want to commit them)
+# go.sum
+
+# React specific
+.eslintcache
+*.css.map
+*.js.map
+*.js.LICENSE.txt
+
+# Next.js
+.next/
+
+# Gatsby
+.cache/
+public
+
+# Nuxt.js
+.nuxt/
+
+# Vue
+dist-ssr/
+
+# Svelte
+.svelte-kit/
+
+# Rollup
+/build/
+
+# Parcel
+.parcel-cache/
+
+# Storybook
+storybook-static/
+
+# Lerna
+lerna-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
