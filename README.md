@@ -15,6 +15,7 @@
 - `POST /api/subscriptions` - Subscribe to a plan
 - `PUT /api/subscriptions/:id/cancel` - Cancel subscription
 - `PUT /api/subscriptions/:id/auto-renew` - Toggle auto-renewal
+-`GET api/subscriptions/stats`-Get stats(NOW EMPTY)
 
 ### Admin Endpoints
 - `POST /api/admin/plans` - Create new plan
