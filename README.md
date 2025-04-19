@@ -1,4 +1,4 @@
-##MANAGE SUBSCRIPTIONS
+## MANAGE SUBSCRIPTIONS
 
 ### Public Endpoints
 - `POST /api/register` - User registration
