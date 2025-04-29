@@ -93,10 +93,21 @@ export const subscriptionsAPI = {
     method: 'PUT',
   }),
   
-  subscribe: (planId, paymentId = '') => apiRequest('/subscriptions', {
-    method: 'POST',
-    body: JSON.stringify({ plan_id: planId, payment_id: paymentId }),
-  }),
+  subscribe: (planId, paymentId = '') => {
+    // Проверка на NaN и корректность числовых значений
+    if (isNaN(planId) || planId === null || planId === undefined) {
+      throw new Error('Invalid planId: must be a valid number');
+    }
+    
+    // Обеспечиваем корректный формат данных для JSON
+    const plan_id = Number(planId);
+    const payment_id = paymentId || '';
+    
+    return apiRequest('/subscriptions', {
+      method: 'POST',
+      body: JSON.stringify({ plan_id, payment_id }),
+    });
+  },
   
   cancel: (subscriptionId) => apiRequest(`/subscriptions/${subscriptionId}/cancel`, {
     method: 'PUT',
