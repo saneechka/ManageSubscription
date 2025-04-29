@@ -36,10 +36,8 @@ const SubscriptionPeriodModal = ({ show, onHide, service, monthlyPlan, yearlyPla
 
   const savings = calculateSavings();
 
-  // Выбираем только один план для отображения (предпочтительно месячный)
-  const planToShow = monthlyPlan || yearlyPlan;
-  
-  if (!planToShow) {
+  // Если нет ни одного плана, показываем сообщение
+  if (!monthlyPlan && !yearlyPlan) {
     return (
       <Modal show={show} onHide={onHide} centered>
         <Modal.Header closeButton>
@@ -55,67 +53,123 @@ const SubscriptionPeriodModal = ({ show, onHide, service, monthlyPlan, yearlyPla
     );
   }
 
+  // Общие стили для карточек планов
+  const getPlanCardStyle = (planId) => {
+    return {
+      transition: 'all 0.3s ease',
+      backgroundColor: hoveredPlan === planId ? '#f8f9fa' : 'white',
+      transform: hoveredPlan === planId ? 'translateY(-5px)' : 'none',
+      boxShadow: hoveredPlan === planId ? '0 5px 15px rgba(0,0,0,0.1)' : 'none',
+      cursor: 'pointer',
+      borderColor: hoveredPlan === planId ? '#0d6efd' : '#dee2e6',
+      borderWidth: '2px',
+      display: 'flex',
+      flexDirection: 'column'
+    };
+  };
+
   return (
     <Modal show={show} onHide={onHide} centered size="lg">
       <Modal.Header closeButton>
         <Modal.Title>Подписка на {service?.name || 'сервис'}</Modal.Title>
       </Modal.Header>
       <Modal.Body>
-        <Row className="justify-content-center">
-          <Col xs={12}>
-            <Card 
-              className="subscription-plan-card h-100" 
-              style={{
-                transition: 'background-color 0.3s',
-                backgroundColor: hoveredPlan === planToShow.id ? '#f8f9fa' : 'white',
-                cursor: 'pointer',
-                borderColor: '#0d6efd'
-              }}
-              onMouseEnter={() => setHoveredPlan(planToShow.id)}
-              onMouseLeave={() => setHoveredPlan(null)}
-              onClick={() => onSubscribe(planToShow.id)}
-            >
-              <Card.Header className="d-flex justify-content-between align-items-center">
-                <div>
-                  {planToShow.period_type === 'years' ? 'Годовая подписка' : 'Месячная подписка'}
-                </div>
-                {planToShow === yearlyPlan && savings && <Badge bg="success">{savings}</Badge>}
-              </Card.Header>
-              <Card.Body>
-                <Card.Title className="mb-3">
-                  <span className="display-6">{planToShow.price.toFixed(2)} ₽</span>
-                  <small className="text-muted">
-                    {planToShow.period_type === 'years' ? ' / год' : ' / месяц'}
-                  </small>
-                  {planToShow === yearlyPlan && (
-                    <div className="text-muted fs-6">
-                      ({(planToShow.price / 12).toFixed(2)} ₽ / месяц)
+        <Row className="d-flex align-items-stretch">
+          {monthlyPlan && (
+            <Col md={yearlyPlan ? 6 : 12} className="mb-3 mb-md-0">
+              <Card 
+                className="subscription-plan-card h-100"
+                style={getPlanCardStyle(monthlyPlan.id)}
+                onMouseEnter={() => setHoveredPlan(monthlyPlan.id)}
+                onMouseLeave={() => setHoveredPlan(null)}
+                onClick={() => onSubscribe(monthlyPlan.id)}
+              >
+                <Card.Header className="d-flex justify-content-between align-items-center">
+                  <div className="fw-bold">Месячная подписка</div>
+                </Card.Header>
+                <Card.Body className="d-flex flex-column">
+                  <div className="flex-grow-1">
+                    <Card.Title className="mb-3">
+                      <span className="display-6">{monthlyPlan.price.toFixed(2)} ₽</span>
+                      <small className="text-muted"> / месяц</small>
+                    </Card.Title>
+                    
+                    {monthlyPlan.description && (
+                      <Card.Text className="mb-3">{monthlyPlan.description}</Card.Text>
+                    )}
+                    
+                    <div className="mt-3 mb-4">
+                      <h6>Что включено:</h6>
+                      <ul>
+                        {formatFeatures(monthlyPlan.features).map((feature, index) => (
+                          <li key={index}>{feature}</li>
+                        ))}
+                      </ul>
                     </div>
-                  )}
-                </Card.Title>
-                
-                {planToShow.description && (
-                  <Card.Text className="mb-3">{planToShow.description}</Card.Text>
-                )}
-                
-                <div className="mt-3 mb-4">
-                  <h6>Что включено:</h6>
-                  <ul>
-                    {formatFeatures(planToShow.features).map((feature, index) => (
-                      <li key={index}>{feature}</li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <Button 
-                  variant="primary" 
-                  className="w-100 mt-2"
-                >
-                  {planToShow.period_type === 'years' ? 'Оформить подписку на год' : 'Оформить подписку'}
-                </Button>
-              </Card.Body>
-            </Card>
-          </Col>
+                  </div>
+                  
+                  <div className="mt-auto">
+                    <Button 
+                      variant="primary" 
+                      className="w-100 mt-2"
+                    >
+                      Оформить подписку
+                    </Button>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          )}
+          
+          {yearlyPlan && (
+            <Col md={monthlyPlan ? 6 : 12}>
+              <Card 
+                className="subscription-plan-card h-100"
+                style={getPlanCardStyle(yearlyPlan.id)}
+                onMouseEnter={() => setHoveredPlan(yearlyPlan.id)}
+                onMouseLeave={() => setHoveredPlan(null)}
+                onClick={() => onSubscribe(yearlyPlan.id)}
+              >
+                <Card.Header className="d-flex justify-content-between align-items-center">
+                  <div className="fw-bold">Годовая подписка</div>
+                  {savings && <Badge bg="success">{savings}</Badge>}
+                </Card.Header>
+                <Card.Body className="d-flex flex-column">
+                  <div className="flex-grow-1">
+                    <Card.Title className="mb-3">
+                      <span className="display-6">{yearlyPlan.price.toFixed(2)} ₽</span>
+                      <small className="text-muted"> / год</small>
+                      <div className="text-muted fs-6">
+                        ({(yearlyPlan.price / 12).toFixed(2)} ₽ / месяц)
+                      </div>
+                    </Card.Title>
+                    
+                    {yearlyPlan.description && (
+                      <Card.Text className="mb-3">{yearlyPlan.description}</Card.Text>
+                    )}
+                    
+                    <div className="mt-3 mb-4">
+                      <h6>Что включено:</h6>
+                      <ul>
+                        {formatFeatures(yearlyPlan.features).map((feature, index) => (
+                          <li key={index}>{feature}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-auto">
+                    <Button 
+                      variant="primary" 
+                      className="w-100 mt-2"
+                    >
+                      Оформить подписку
+                    </Button>
+                  </div>
+                </Card.Body>
+              </Card>
+            </Col>
+          )}
         </Row>
       </Modal.Body>
       <Modal.Footer>

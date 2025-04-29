@@ -47,3 +47,59 @@
 footer {
   margin-top: auto;
 }
+
+/* Стили для карточек сервисов и планов */
+.service-card {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.service-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.service-card .card-header {
+  background-color: rgba(0, 0, 0, 0.03);
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.service-icon-card {
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border-width: 2px;
+}
+
+.service-icon-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.08);
+}
+
+.subscription-plan-card {
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border-width: 2px;
+}
+
+.subscription-plan-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.subscription-plan-card .card-header {
+  padding: 15px 20px;
+}
+
+.subscription-plan-card .card-body {
+  padding: 20px;
+}
+
+/* Активное состояние карточек */
+.service-card.active,
+.subscription-plan-card.active {
+  border-color: #0d6efd;
+  border-width: 2px;
+}

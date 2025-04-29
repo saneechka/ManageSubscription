@@ -139,10 +139,13 @@ const Plans = () => {
       const serviceMap = new Map();
       
       availablePlans.forEach(plan => {
-        if (!serviceMap.has(plan.name)) {
-          serviceMap.set(plan.name, {
+        // Очищаем название подписки от информации о периоде в скобках
+        const cleanName = plan.name.replace(/\s*\([^)]*\)\s*$/, '');
+        
+        if (!serviceMap.has(cleanName)) {
+          serviceMap.set(cleanName, {
             id: plan.id, // Используем ID первого найденного плана для этого сервиса
-            name: plan.name,
+            name: cleanName, // Используем очищенное имя
             description: plan.description,
             features: plan.features
           });
@@ -179,15 +182,19 @@ const Plans = () => {
         throw new Error('Нет доступных планов для этого сервиса');
       }
       
-      // Находим месячный план для сервиса
+      // Находим месячный и годовой планы
       const monthPlan = servicePlans.find(p => 
         (p.period_type === 'months' && p.duration === 1) || 
         (p.duration >= 28 && p.duration <= 31)
       );
       
-      // Теперь мы показываем только месячный план
+      const yearPlan = servicePlans.find(p => 
+        (p.period_type === 'years' && p.duration === 1) || 
+        (p.duration >= 364 && p.duration <= 366)
+      );
+      
       setMonthlyPlan(monthPlan || null);
-      setYearlyPlan(null); // Не показываем годовой план
+      setYearlyPlan(yearPlan || null);
       setSelectedService({ name: service.name });
       setShowPeriodModal(true);
       
