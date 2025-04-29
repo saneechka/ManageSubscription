@@ -3,6 +3,7 @@ import { Container, Row, Col, Card, Button, Form, Alert, Badge, InputGroup } fro
 import { useNavigate } from 'react-router-dom';
 import { Search } from 'react-bootstrap-icons';
 import { plansAPI, subscriptionsAPI } from '../utils/api';
+import SubscriptionPeriodModal from '../components/SubscriptionPeriodModal';
 
 
 const POPULAR_SERVICES = [
@@ -63,44 +64,43 @@ const POPULAR_SERVICES = [
 ];
 
 const Plans = () => {
-  const [plans, setPlans] = useState([]);
-  const [filteredPlans, setFilteredPlans] = useState([]);
+  const [services, setServices] = useState([]);
+  const [filteredServices, setFilteredServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [actionSuccess, setActionSuccess] = useState('');
+  const [hoveredServiceId, setHoveredServiceId] = useState(null);
+  
+  // Состояния для модального окна выбора тарифа
+  const [showPeriodModal, setShowPeriodModal] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
+  const [monthlyPlan, setMonthlyPlan] = useState(null);
+  const [yearlyPlan, setYearlyPlan] = useState(null);
   
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetchPlans();
+    fetchServices();
   }, []);
 
   // Применяем фильтр при изменении запроса или категории
   useEffect(() => {
-    if (plans.length > 0) {
-      // Сначала фильтруем, оставляя только месячные подписки (примерно 30 дней)
-      let monthlyPlans = plans.filter(plan => 
-        (plan.duration >= 28 && plan.duration <= 31) || 
-        (plan.period_type === 'months' && plan.duration === 1)
-      );
-      
-      // Затем применяем фильтры поиска
-      let filtered = [...monthlyPlans];
+    if (services.length > 0) {
+      let filtered = [...services];
       
       // Применяем поиск по имени
       if (searchQuery) {
-        filtered = filtered.filter(plan => 
-          plan.name.toLowerCase().includes(searchQuery.toLowerCase())
+        filtered = filtered.filter(service => 
+          service.name.toLowerCase().includes(searchQuery.toLowerCase())
         );
       }
       
       // Применяем фильтр по категории
       if (selectedCategory !== 'all') {
-        filtered = filtered.filter(plan => {
-          // Соотносим план с категорией
-          const serviceName = plan.name.toLowerCase();
+        filtered = filtered.filter(service => {
+          const serviceName = service.name.toLowerCase();
           
           switch(selectedCategory) {
             case 'video':
@@ -121,20 +121,36 @@ const Plans = () => {
         });
       }
       
-      setFilteredPlans(filtered);
+      setFilteredServices(filtered);
     }
-  }, [searchQuery, selectedCategory, plans]);
+  }, [searchQuery, selectedCategory, services]);
 
-  const fetchPlans = async () => {
+  // Получаем список доступных сервисов
+  const fetchServices = async () => {
     setLoading(true);
     setError('');
 
     try {
+      // Получаем все планы и группируем их по названию сервиса
       const data = await plansAPI.getAll();
       const availablePlans = data.plans || [];
       
-      setPlans(availablePlans);
-      // Фильтрация будет происходить в useEffect
+      // Создаем список уникальных сервисов с агрегированной информацией
+      const serviceMap = new Map();
+      
+      availablePlans.forEach(plan => {
+        if (!serviceMap.has(plan.name)) {
+          serviceMap.set(plan.name, {
+            id: plan.id, // Используем ID первого найденного плана для этого сервиса
+            name: plan.name,
+            description: plan.description,
+            features: plan.features
+          });
+        }
+      });
+      
+      const uniqueServices = Array.from(serviceMap.values());
+      setServices(uniqueServices);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -142,7 +158,8 @@ const Plans = () => {
     }
   };
 
-  const handleSubscribe = async (planId) => {
+  // Открываем модальное окно с выбором плана
+  const openSubscriptionModal = async (service) => {
     // Проверяем авторизацию пользователя
     const token = localStorage.getItem('token');
     
@@ -151,32 +168,62 @@ const Plans = () => {
       return;
     }
 
-    // Сразу оформляем подписку
+    try {
+      setLoading(true);
+
+      // Получаем все планы для выбранного сервиса
+      const response = await plansAPI.getServicePlans(service.name);
+      const servicePlans = response.plans || [];
+      
+      if (servicePlans.length === 0) {
+        throw new Error('Нет доступных планов для этого сервиса');
+      }
+      
+      // Находим месячный план для сервиса
+      const monthPlan = servicePlans.find(p => 
+        (p.period_type === 'months' && p.duration === 1) || 
+        (p.duration >= 28 && p.duration <= 31)
+      );
+      
+      // Теперь мы показываем только месячный план
+      setMonthlyPlan(monthPlan || null);
+      setYearlyPlan(null); // Не показываем годовой план
+      setSelectedService({ name: service.name });
+      setShowPeriodModal(true);
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubscribe = async (planId) => {
     try {
       setLoading(true);
       
-      // Convert planId to number and validate it
+      // Проверка корректности ID плана
       const numPlanId = Number(planId);
       if (isNaN(numPlanId) || numPlanId <= 0) {
         throw new Error('Недопустимый ID плана');
       }
       
-      // Make sure we're sending an object with the exact required format
       const response = await subscriptionsAPI.subscribe(numPlanId);
       setActionSuccess('Подписка успешно оформлена!');
       
-      // Обновляем кеш статистики в localStorage, чтобы Dashboard корректно обновил счетчики
+      // Обновляем кеш статистики в localStorage
       try {
-        // Получаем текущую статистику с сервера
         const statsData = await subscriptionsAPI.getStats();
         
-        // Сохраняем обновленную статистику в localStorage для Dashboard
         if (statsData && statsData.stats) {
           localStorage.setItem('subscription_stats', JSON.stringify(statsData.stats));
         }
       } catch (statsErr) {
         console.error('Failed to update stats cache:', statsErr);
       }
+      
+      // Закрываем модальное окно
+      setShowPeriodModal(false);
       
       // После успешной подписки перенаправляем на дашборд
       setTimeout(() => navigate('/dashboard'), 1500);
@@ -200,14 +247,27 @@ const Plans = () => {
     }
   };
 
-  // Форматирование периода подписки - только месяц
-  const formatPeriod = (days) => {
-    return 'месяц';
+  // Находим иконку для сервиса из списка популярных
+  const getServiceIcon = (serviceName) => {
+    const service = POPULAR_SERVICES.find(s => 
+      serviceName.toLowerCase().includes(s.name.toLowerCase()) || 
+      s.name.toLowerCase().includes(serviceName.toLowerCase())
+    );
+    return service ? service.icon : '📱';
+  };
+
+  // Находим цвет для сервиса из списка популярных
+  const getServiceColor = (serviceName) => {
+    const service = POPULAR_SERVICES.find(s => 
+      serviceName.toLowerCase().includes(s.name.toLowerCase()) || 
+      s.name.toLowerCase().includes(serviceName.toLowerCase())
+    );
+    return service ? service.color : '#6c757d';
   };
 
   return (
     <Container className="py-5">
-      <h1 className="text-center mb-5">Популярные ежемесячные подписки</h1>
+      <h1 className="text-center mb-5">Каталог доступных подписок</h1>
 
       {error && <Alert variant="danger" dismissible onClose={() => setError('')}>
         <Alert.Heading>Ошибка!</Alert.Heading>
@@ -218,6 +278,16 @@ const Plans = () => {
         <Alert.Heading>Успешно!</Alert.Heading>
         <p>{actionSuccess}</p>
       </Alert>}
+
+      {/* Модальное окно выбора срока подписки */}
+      <SubscriptionPeriodModal 
+        show={showPeriodModal}
+        onHide={() => setShowPeriodModal(false)}
+        service={selectedService}
+        monthlyPlan={monthlyPlan}
+        yearlyPlan={yearlyPlan}
+        onSubscribe={handleSubscribe}
+      />
 
       <Row className="mb-4">
         <Col md={6}>
@@ -282,25 +352,37 @@ const Plans = () => {
             <span className="visually-hidden">Загрузка...</span>
           </div>
         </div>
-      ) : filteredPlans.length > 0 ? (
+      ) : filteredServices.length > 0 ? (
         <Row className="g-4">
-          {filteredPlans.map(plan => (
-            <Col md={6} lg={4} key={plan.id} className="mb-4">
-              <Card className="plan-card h-100">
-                <Card.Header as="h5" className="d-flex justify-content-between align-items-center">
-                  {plan.name}
+          {filteredServices.map(service => (
+            <Col md={6} lg={4} key={service.id} className="mb-4">
+              <Card 
+                className="service-card h-100" 
+                style={{ 
+                  borderColor: getServiceColor(service.name),
+                  transition: 'all 0.3s ease',
+                  transform: hoveredServiceId === service.id ? 'translateY(-5px)' : 'none',
+                  boxShadow: hoveredServiceId === service.id ? '0 5px 15px rgba(0,0,0,0.1)' : 'none',
+                  backgroundColor: hoveredServiceId === service.id ? '#f8f9fa' : 'white',
+                  cursor: 'pointer'
+                }}
+                onClick={() => openSubscriptionModal(service)}
+                onMouseEnter={() => setHoveredServiceId(service.id)}
+                onMouseLeave={() => setHoveredServiceId(null)}
+              >
+                <Card.Header as="h5" className="d-flex align-items-center">
+                  <span className="me-2" style={{ fontSize: '1.5rem' }}>
+                    {getServiceIcon(service.name)}
+                  </span>
+                  {service.name}
                 </Card.Header>
                 <Card.Body className="d-flex flex-column">
-                  <Card.Title className="mb-3">
-                    <span className="display-6">{plan.price.toFixed(2)} ₽</span>
-                    <small className="text-muted"> / месяц</small>
-                  </Card.Title>
-                  <Card.Text>{plan.description}</Card.Text>
+                  <Card.Text className="mb-3">{service.description}</Card.Text>
                   
                   <div className="mt-3 mb-4">
                     <h6>Что включено:</h6>
                     <ul>
-                      {formatFeatures(plan.features).map((feature, index) => (
+                      {formatFeatures(service.features).map((feature, index) => (
                         <li key={index}>{feature}</li>
                       ))}
                     </ul>
@@ -308,7 +390,6 @@ const Plans = () => {
                   
                   <Button 
                     variant="primary" 
-                    onClick={() => handleSubscribe(plan.id)}
                     className="mt-auto"
                     disabled={loading}
                   >

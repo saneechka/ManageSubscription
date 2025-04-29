@@ -95,7 +95,8 @@ func (s *SubscriptionService) Subscribe(userID uint, planID uint, paymentID stri
 		return nil, err
 	}
 
-	if err := app.DB.Model(&subscription).Association("Plan").Error; err != nil {
+	// Загружаем связанный план в подписку для возврата в ответе
+	if err := app.DB.Model(&subscription).Association("Plan").Find(&subscription.Plan); err != nil {
 		return nil, err
 	}
 
@@ -275,4 +276,39 @@ func (s *SubscriptionService) RenewSubscription(subscriptionID uint) error {
 	subscription.RenewalDate = &now
 
 	return app.DB.Save(&subscription).Error
+}
+
+// GetPlansForService возвращает все доступные планы подписки для указанного сервиса
+// Это позволит получить как месячные, так и годовые варианты одного сервиса
+func (s *SubscriptionService) GetPlansForService(serviceName string) ([]models.Plan, error) {
+	var plans []models.Plan
+	result := app.DB.Where("name = ? AND is_active = true", serviceName).
+		Order("duration asc").
+		Find(&plans)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return plans, nil
+}
+
+// GetRelatedPlans возвращает все планы, связанные с указанным планом (по имени сервиса)
+// Например, для месячного плана найдет годовой и наоборот
+func (s *SubscriptionService) GetRelatedPlans(planID uint) ([]models.Plan, error) {
+	var basePlan models.Plan
+	if err := app.DB.First(&basePlan, planID).Error; err != nil {
+		return nil, errors.New("план не найден")
+	}
+
+	var relatedPlans []models.Plan
+	result := app.DB.Where("name = ? AND is_active = true AND id != ?", basePlan.Name, planID).
+		Order("duration asc").
+		Find(&relatedPlans)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return relatedPlans, nil
 }

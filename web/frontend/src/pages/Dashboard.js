@@ -46,42 +46,51 @@ const Dashboard = ({ user }) => {
     setError('');
     
     try {
-
+      // Получаем все подписки без фильтрации по периоду
       const subsData = await subscriptionsAPI.getAll();
-
-      const allSubs = (subsData.subscriptions || []).filter(sub => {
-
-        return (sub.plan.duration >= 28 && sub.plan.duration <= 31) || 
-               (sub.plan.period_type === 'months' && sub.plan.duration === 1);
-      });
+                let allSubs = subsData.subscriptions || [];
+      
+      // Фильтруем подписки без плана или с некорректными данными
+      allSubs = allSubs.filter(sub => sub && sub.plan && sub.plan.name && sub.plan.price !== undefined);
       
       setSubscriptions(allSubs);
       
 
+      // Получаем активные подписки без фильтрации по периоду
       const activeData = await subscriptionsAPI.getActive();
-
-      const activeSubs = (activeData.active_subscriptions || []).filter(sub => {
-
-        return (sub.plan.duration >= 28 && sub.plan.duration <= 31) || 
-               (sub.plan.period_type === 'months' && sub.plan.duration === 1);
-      });
+      let activeSubs = activeData.active_subscriptions || [];
+      
+      // Фильтруем активные подписки без плана или с некорректными данными
+      activeSubs = activeSubs.filter(sub => sub && sub.plan && sub.plan.name && sub.plan.price !== undefined);
       
       setActiveSubscriptions(activeSubs);
       
 
+      // Получаем статистику
       const statsData = await subscriptionsAPI.getStats();
       
 
       const finalStats = statsData.stats || {
         active_count: activeSubs.length,
-        total_monthly_spending: activeSubs.reduce((total, sub) => total + sub.plan.price, 0)
+        total_monthly_spending: activeSubs.reduce((total, sub) => {
+          if (!sub || !sub.plan || typeof sub.plan.price !== 'number') {
+            return total;
+          }
+          // Конвертируем годовую стоимость в ежемесячную для правильного расчета
+          return total + (sub.plan.period_type === 'years' ? sub.plan.price / 12 : sub.plan.price);
+        }, 0)
       };
       
 
-
       if (finalStats.active_count !== activeSubs.length) {
         finalStats.active_count = activeSubs.length;
-        finalStats.total_monthly_spending = activeSubs.reduce((total, sub) => total + sub.plan.price, 0);
+        finalStats.total_monthly_spending = activeSubs.reduce((total, sub) => {
+          if (!sub || !sub.plan || typeof sub.plan.price !== 'number') {
+            return total;
+          }
+          // Конвертируем годовую стоимость в ежемесячную для правильного расчета
+          return total + (sub.plan.period_type === 'years' ? sub.plan.price / 12 : sub.plan.price);
+        }, 0);
       }
       
       setStats(finalStats);
@@ -103,12 +112,8 @@ const Dashboard = ({ user }) => {
     
     try {
       const data = await subscriptionsAPI.search(searchQuery, statusFilter, sortBy);
-
-      const filteredSubs = (data.subscriptions || []).filter(sub => {
-
-        return (sub.plan.duration >= 28 && sub.plan.duration <= 31) || 
-               (sub.plan.period_type === 'months' && sub.plan.duration === 1);
-      });
+      // Отображаем все подписки без фильтрации по длительности
+      const filteredSubs = data.subscriptions || [];
       
       setSubscriptions(filteredSubs);
     } catch (err) {
@@ -122,21 +127,26 @@ const Dashboard = ({ user }) => {
   const sortSubscriptions = (subs, sortType) => {
     if (!subs || subs.length === 0) return [];
     
-    const sorted = [...subs];
+    // Фильтруем подписки с некорректными данными
+    const validSubs = subs.filter(sub => sub && sub.plan && sub.plan.name && sub.plan.price !== undefined);
+    
+    if (validSubs.length === 0) return [];
+    
+    const sorted = [...validSubs];
     
     switch (sortType) {
       case 'price_asc':
-        return sorted.sort((a, b) => a.plan.price - b.plan.price);
+        return sorted.sort((a, b) => (a.plan.price || 0) - (b.plan.price || 0));
       case 'price_desc':
-        return sorted.sort((a, b) => b.plan.price - a.plan.price);
+        return sorted.sort((a, b) => (b.plan.price || 0) - (a.plan.price || 0));
       case 'date_asc':
-        return sorted.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+        return sorted.sort((a, b) => new Date(a.start_date || 0) - new Date(b.start_date || 0));
       case 'date_desc':
-        return sorted.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+        return sorted.sort((a, b) => new Date(b.start_date || 0) - new Date(a.start_date || 0));
       case 'name_asc':
-        return sorted.sort((a, b) => a.plan.name.localeCompare(b.plan.name));
+        return sorted.sort((a, b) => (a.plan.name || '').localeCompare(b.plan.name || ''));
       case 'name_desc':
-        return sorted.sort((a, b) => b.plan.name.localeCompare(a.plan.name));
+        return sorted.sort((a, b) => (b.plan.name || '').localeCompare(a.plan.name || ''));
       default:
         return sorted;
     }
@@ -154,22 +164,18 @@ const Dashboard = ({ user }) => {
     setSearchQuery(query);
     
     if (!query.trim() && !statusFilter) {
-
       fetchDashboardData();
       return;
     }
     
-
     subscriptionsAPI.getAll().then(data => {
       let filteredSubs = (data.subscriptions || []);
       
+      // Фильтруем подписки с некорректными данными
+      filteredSubs = filteredSubs.filter(sub => sub && sub.plan && sub.plan.name && sub.plan.price !== undefined);
 
-      filteredSubs = filteredSubs.filter(sub => 
-        (sub.plan.duration >= 28 && sub.plan.duration <= 31) || 
-        (sub.plan.period_type === 'months' && sub.plan.duration === 1)
-      );
+      // Убираем фильтр по длительности, чтобы отображались все подписки, включая годовые
       
-
       if (query.trim()) {
         filteredSubs = filteredSubs.filter(sub => 
           sub.plan.name.toLowerCase().includes(query.toLowerCase())
@@ -436,67 +442,74 @@ const Dashboard = ({ user }) => {
             <Tab eventKey="active" title={`Активные (${activeSubscriptions.length})`}>
               {activeSubscriptions.length > 0 ? (
                 <Row>
-                  {activeSubscriptions.map(subscription => (
-                    <Col md={6} lg={4} key={subscription.id} className="mb-4">
-                      <Card className="subscription-card h-100">
-                        <Card.Header className="d-flex justify-content-between align-items-center">
-                          <div className="fw-bold d-flex align-items-center">
-                            <span className="me-2" style={{ fontSize: '1.5rem' }}>
-                              {getServiceIcon(subscription.plan.name)}
-                            </span>
-                            {subscription.plan.name}
-                          </div>
-                          <Badge bg={getStatusColor(subscription.status)}>
-                            {getStatusInRussian(subscription.status)}
-                          </Badge>
-                        </Card.Header>
-                        <Card.Body>
-                          <div className="mb-3">
-                            <div className="d-flex justify-content-between">
-                              <div>Стоимость:</div>
-                              <div className="fw-bold">{subscription.plan.price.toFixed(2)} ₽/месяц</div>
+                  {activeSubscriptions.map(subscription => 
+                    subscription && subscription.plan ? (
+                      <Col md={6} lg={4} key={subscription.id} className="mb-4">
+                        <Card className="subscription-card h-100">
+                          <Card.Header className="d-flex justify-content-between align-items-center">
+                            <div className="fw-bold d-flex align-items-center">
+                              <span className="me-2" style={{ fontSize: '1.5rem' }}>
+                                {getServiceIcon(subscription.plan.name || '')}
+                              </span>
+                              {subscription.plan.name || 'Неизвестная подписка'}
                             </div>
-                            <div className="d-flex justify-content-between">
-                              <div>Дата окончания:</div>
-                              <div>{formatDate(subscription.end_date)}</div>
+                            <Badge bg={getStatusColor(subscription.status)}>
+                              {getStatusInRussian(subscription.status)}
+                            </Badge>
+                          </Card.Header>
+                          <Card.Body>
+                            <div className="mb-3">
+                              <div className="d-flex justify-content-between">
+                                <div>Стоимость:</div>
+                                <div className="fw-bold">
+                                  {subscription.plan.period_type === 'years' ? 
+                                    `${(subscription.plan.price || 0).toFixed(2)} ₽/год (${((subscription.plan.price || 0) / 12).toFixed(2)} ₽/мес)` : 
+                                    `${(subscription.plan.price || 0).toFixed(2)} ₽/месяц`
+                                  }
+                                </div>
+                              </div>
+                              <div className="d-flex justify-content-between">
+                                <div>Дата окончания:</div>
+                                <div>{formatDate(subscription.end_date)}</div>
+                              </div>
+                              <div className="d-flex justify-content-between">
+                                <div>Автопродление:</div>
+                                <Badge bg={subscription.auto_renew ? "success" : "secondary"}>
+                                  {subscription.auto_renew ? "Включено" : "Отключено"}
+                                </Badge>
+                              </div>
                             </div>
-                            <div className="d-flex justify-content-between">
-                              <div>Автопродление:</div>
-                              <Badge bg={subscription.auto_renew ? "success" : "secondary"}>
-                                {subscription.auto_renew ? "Включено" : "Отключено"}
-                              </Badge>
+                            <div>{subscription.plan.description || ''}</div>
+                          </Card.Body>
+                          <Card.Footer>
+                            <div className="d-flex flex-column gap-2">
+                              <Button 
+                                variant={subscription.auto_renew ? "outline-warning" : "outline-success"}
+                                onClick={() => handleToggleAutoRenewal(subscription.id, subscription.auto_renew)}
+                                size="sm"
+                              >
+                                {subscription.auto_renew ? "Отключить автопродление" : "Включить автопродление"}
+                              </Button>
+                              <Button 
+                                variant="outline-primary" 
+                                onClick={() => handleRenewSubscription(subscription.id)}
+                                size="sm"
+                              >
+                                Продлить сейчас
+                              </Button>
+                              <Button 
+                                variant="outline-danger" 
+                                onClick={() => handleCancelSubscription(subscription.id)}
+                                size="sm"
+                              >
+                                Отменить подписку
+                              </Button>
                             </div>
-                          </div>
-                          <div>{subscription.plan.description}</div>
-                        </Card.Body>
-                        <Card.Footer>
-                          <div className="d-flex flex-column gap-2">
-                            <Button 
-                              variant={subscription.auto_renew ? "outline-warning" : "outline-success"}
-                              onClick={() => handleToggleAutoRenewal(subscription.id, subscription.auto_renew)}
-                              size="sm"
-                            >
-                              {subscription.auto_renew ? "Отключить автопродление" : "Включить автопродление"}
-                            </Button>
-                            <Button 
-                              variant="outline-primary" 
-                              onClick={() => handleRenewSubscription(subscription.id)}
-                              size="sm"
-                            >
-                              Продлить сейчас
-                            </Button>
-                            <Button 
-                              variant="outline-danger" 
-                              onClick={() => handleCancelSubscription(subscription.id)}
-                              size="sm"
-                            >
-                              Отменить подписку
-                            </Button>
-                          </div>
-                        </Card.Footer>
-                      </Card>
-                    </Col>
-                  ))}
+                          </Card.Footer>
+                        </Card>
+                      </Col>
+                    ) : null
+                  )}
                 </Row>
               ) : (
                 <div className="text-center py-5">
@@ -523,65 +536,72 @@ const Dashboard = ({ user }) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {subscriptions.map(sub => (
-                        <tr key={sub.id}>
-                          <td>
-                            <div className="d-flex align-items-center">
-                              <span className="me-2">{getServiceIcon(sub.plan.name)}</span>
-                              {sub.plan.name}
-                            </div>
-                          </td>
-                          <td>{formatDate(sub.start_date)}</td>
-                          <td>{formatDate(sub.end_date)}</td>
-                          <td>
-                            <Badge bg={getStatusColor(sub.status)}>
-                              {getStatusInRussian(sub.status)}
-                            </Badge>
-                          </td>
-                          <td>{sub.plan.price.toFixed(2)} ₽/месяц</td>
-                          <td>
-                            <Badge bg={sub.auto_renew ? "success" : "secondary"}>
-                              {sub.auto_renew ? "Да" : "Нет"}
-                            </Badge>
-                          </td>
-                          <td>
-                            {sub.status === 'active' && (
-                              <div className="d-flex gap-1">
-                                <Button
-                                  size="sm"
-                                  variant={sub.auto_renew ? "outline-warning" : "outline-success"}
-                                  onClick={() => handleToggleAutoRenewal(sub.id, sub.auto_renew)}
-                                >
-                                  {sub.auto_renew ? "Отключить" : "Включить"}
-                                </Button>
+                      {subscriptions.map(sub => 
+                        sub && sub.plan ? (
+                          <tr key={sub.id}>
+                            <td>
+                              <div className="d-flex align-items-center">
+                                <span className="me-2">{getServiceIcon(sub.plan.name || '')}</span>
+                                {sub.plan.name || 'Неизвестная подписка'}
+                              </div>
+                            </td>
+                            <td>{formatDate(sub.start_date)}</td>
+                            <td>{formatDate(sub.end_date)}</td>
+                            <td>
+                              <Badge bg={getStatusColor(sub.status)}>
+                                {getStatusInRussian(sub.status)}
+                              </Badge>
+                            </td>
+                            <td>
+                              {sub.plan.period_type === 'years' ? 
+                                `${(sub.plan.price || 0).toFixed(2)} ₽/год (${((sub.plan.price || 0) / 12).toFixed(2)} ₽/мес)` : 
+                                `${(sub.plan.price || 0).toFixed(2)} ₽/месяц`
+                              }
+                            </td>
+                            <td>
+                              <Badge bg={sub.auto_renew ? "success" : "secondary"}>
+                                {sub.auto_renew ? "Да" : "Нет"}
+                              </Badge>
+                            </td>
+                            <td>
+                              {sub.status === 'active' && (
+                                <div className="d-flex gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant={sub.auto_renew ? "outline-warning" : "outline-success"}
+                                    onClick={() => handleToggleAutoRenewal(sub.id, sub.auto_renew)}
+                                  >
+                                    {sub.auto_renew ? "Отключить" : "Включить"}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline-primary"
+                                    onClick={() => handleRenewSubscription(sub.id)}
+                                  >
+                                    Продлить
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline-danger"
+                                    onClick={() => handleCancelSubscription(sub.id)}
+                                  >
+                                    Отменить
+                                  </Button>
+                                </div>
+                              )}
+                              {sub.status === 'expired' && (
                                 <Button
                                   size="sm"
                                   variant="outline-primary"
                                   onClick={() => handleRenewSubscription(sub.id)}
                                 >
-                                  Продлить
+                                  Возобновить
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline-danger"
-                                  onClick={() => handleCancelSubscription(sub.id)}
-                                >
-                                  Отменить
-                                </Button>
-                              </div>
-                            )}
-                            {sub.status === 'expired' && (
-                              <Button
-                                size="sm"
-                                variant="outline-primary"
-                                onClick={() => handleRenewSubscription(sub.id)}
-                              >
-                                Возобновить
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                              )}
+                            </td>
+                          </tr>
+                        ) : null
+                      )}
                     </tbody>
                   </table>
                 </div>

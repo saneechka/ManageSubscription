@@ -68,6 +68,11 @@ export const plansAPI = {
   getById: (id) => apiRequest(`/plans/${id}`),
   
   filterByPrice: (minPrice, maxPrice) => apiRequest(`/plans/filter?min=${minPrice}&max=${maxPrice}`),
+  
+  // Обновлены маршруты API для соответствия обновленным эндпоинтам на бэкенде
+  getRelatedPlans: (planId) => apiRequest(`/plans/related/${planId}`),
+  
+  getServicePlans: (serviceName) => apiRequest(`/plans/service?name=${encodeURIComponent(serviceName)}`),
 };
 
 

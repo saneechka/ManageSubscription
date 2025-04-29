@@ -13,24 +13,20 @@ import (
 )
 
 func main() {
-	
+
 	projectRoot, _ := filepath.Abs(filepath.Join(filepath.Dir(os.Args[0]), ".."))
 	if err := godotenv.Load(filepath.Join(projectRoot, ".env")); err != nil {
 		log.Printf("Warning: .env file not found at %s, using environment variables", filepath.Join(projectRoot, ".env"))
-
 
 		if err := godotenv.Load(); err != nil {
 			log.Println("Warning: .env file not found in current directory, using environment variables")
 		}
 	}
 
-
 	app.InitDB()
 	defer app.CloseDB()
 
-
 	router := gin.Default()
-
 
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
@@ -45,49 +41,47 @@ func main() {
 		c.Next()
 	})
 
-
 	router.Static("/static", "./web/frontend/build/static")
 	router.StaticFile("/favicon.ico", "./web/frontend/build/favicon.ico")
 	router.StaticFile("/manifest.json", "./web/frontend/build/manifest.json")
 	router.StaticFile("/logo192.png", "./web/frontend/build/logo192.png")
 	router.StaticFile("/logo512.png", "./web/frontend/build/logo512.png")
 
-
 	userHandler := handlers.NewUserHandler()
 	planHandler := handlers.NewPlanHandler()
 	subscriptionHandler := handlers.NewSubscriptionHandler()
 
-
 	api := router.Group("/api")
 	{
-
+		// Публичные эндпоинты
 		api.POST("/register", userHandler.Register)
 		api.POST("/login", userHandler.Login)
 
-
-		api.GET("/plans", planHandler.GetAllPlans)
-		api.GET("/plans/:id", planHandler.GetPlanByID)
+		// Эндпоинты для планов
+		// Важно: более специфичные маршруты должны быть выше, чем общие
 		api.GET("/plans/filter", planHandler.FilterPlansByPrice)
-
+		api.GET("/plans/service", subscriptionHandler.GetPlansForService)
+		api.GET("/plans/related/:planId", subscriptionHandler.GetRelatedPlans) // Изменили маршрут
+		api.GET("/plans/:id", planHandler.GetPlanByID)
+		api.GET("/plans", planHandler.GetAllPlans)
 
 		protected := api.Group("/")
 		protected.Use(middleware.AuthMiddleware())
 		{
+			// ...existing code...
 
 			protected.GET("/profile", userHandler.GetProfile)
 			protected.PUT("/profile", userHandler.UpdateProfile)
 
-
 			protected.GET("/subscriptions", subscriptionHandler.GetUserSubscriptions)
 			protected.GET("/subscriptions/active", subscriptionHandler.GetActiveSubscriptions)
+			protected.GET("/subscriptions/stats", subscriptionHandler.GetSubscriptionStats)
 			protected.GET("/subscriptions/search", subscriptionHandler.SearchSubscriptions)
 			protected.GET("/subscriptions/:id", subscriptionHandler.GetSubscriptionByID)
 			protected.POST("/subscriptions", subscriptionHandler.Subscribe)
 			protected.PUT("/subscriptions/:id/cancel", subscriptionHandler.CancelSubscription)
 			protected.PUT("/subscriptions/:id/auto-renew", subscriptionHandler.UpdateAutoRenewal)
 			protected.PUT("/subscriptions/:id/renew", subscriptionHandler.RenewSubscription)
-			protected.GET("/subscriptions/stats", subscriptionHandler.GetSubscriptionStats)
-
 
 			admin := protected.Group("/admin")
 			admin.Use(middleware.AdminRequired())
@@ -99,11 +93,9 @@ func main() {
 		}
 	}
 
-
 	router.NoRoute(func(c *gin.Context) {
 		c.File("./web/frontend/build/index.html")
 	})
-
 
 	port := os.Getenv("PORT")
 	if port == "" {

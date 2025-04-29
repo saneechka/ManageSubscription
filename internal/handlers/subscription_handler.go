@@ -8,11 +8,9 @@ import (
 	"github.com/saneechka/ManageSubscription/internal/services"
 )
 
-
 type SubscriptionHandler struct {
 	subscriptionService *services.SubscriptionService
 }
-
 
 func NewSubscriptionHandler() *SubscriptionHandler {
 	return &SubscriptionHandler{
@@ -21,7 +19,7 @@ func NewSubscriptionHandler() *SubscriptionHandler {
 }
 
 func (h *SubscriptionHandler) GetUserSubscriptions(c *gin.Context) {
-	
+
 	userID := c.MustGet("userID").(uint)
 
 	subscriptions, err := h.subscriptionService.GetUserSubscriptions(userID)
@@ -36,7 +34,6 @@ func (h *SubscriptionHandler) GetUserSubscriptions(c *gin.Context) {
 		"subscriptions": subscriptions,
 	})
 }
-
 
 func (h *SubscriptionHandler) GetActiveSubscriptions(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
@@ -53,7 +50,6 @@ func (h *SubscriptionHandler) GetActiveSubscriptions(c *gin.Context) {
 		"active_subscriptions": subscriptions,
 	})
 }
-
 
 func (h *SubscriptionHandler) GetSubscriptionStats(c *gin.Context) {
 
@@ -72,13 +68,10 @@ func (h *SubscriptionHandler) GetSubscriptionStats(c *gin.Context) {
 	})
 }
 
-
-
 type SubscribeRequest struct {
 	PlanID    uint   `json:"plan_id"`
 	PaymentID string `json:"payment_id"`
 }
-
 
 func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 
@@ -106,11 +99,9 @@ func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 	})
 }
 
-
 func (h *SubscriptionHandler) CancelSubscription(c *gin.Context) {
 
 	userID := c.MustGet("userID").(uint)
-
 
 	subscriptionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -119,7 +110,6 @@ func (h *SubscriptionHandler) CancelSubscription(c *gin.Context) {
 		})
 		return
 	}
-
 
 	subscription, err := h.subscriptionService.GetSubscriptionByID(uint(subscriptionID))
 	if err != nil {
@@ -135,7 +125,6 @@ func (h *SubscriptionHandler) CancelSubscription(c *gin.Context) {
 		})
 		return
 	}
-
 
 	err = h.subscriptionService.CancelSubscription(uint(subscriptionID))
 	if err != nil {
@@ -150,16 +139,13 @@ func (h *SubscriptionHandler) CancelSubscription(c *gin.Context) {
 	})
 }
 
-
 type AutoRenewRequest struct {
 	AutoRenew bool `json:"auto_renew"`
 }
 
-
 func (h *SubscriptionHandler) UpdateAutoRenewal(c *gin.Context) {
 
 	userID := c.MustGet("userID").(uint)
-
 
 	subscriptionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -168,7 +154,6 @@ func (h *SubscriptionHandler) UpdateAutoRenewal(c *gin.Context) {
 		})
 		return
 	}
-
 
 	subscription, err := h.subscriptionService.GetSubscriptionByID(uint(subscriptionID))
 	if err != nil {
@@ -185,7 +170,6 @@ func (h *SubscriptionHandler) UpdateAutoRenewal(c *gin.Context) {
 		return
 	}
 
-
 	var request AutoRenewRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -193,7 +177,6 @@ func (h *SubscriptionHandler) UpdateAutoRenewal(c *gin.Context) {
 		})
 		return
 	}
-
 
 	err = h.subscriptionService.UpdateAutoRenewal(uint(subscriptionID), request.AutoRenew)
 	if err != nil {
@@ -208,11 +191,9 @@ func (h *SubscriptionHandler) UpdateAutoRenewal(c *gin.Context) {
 	})
 }
 
-
 func (h *SubscriptionHandler) GetSubscriptionByID(c *gin.Context) {
 
 	userID := c.MustGet("userID").(uint)
-
 
 	subscriptionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -222,7 +203,6 @@ func (h *SubscriptionHandler) GetSubscriptionByID(c *gin.Context) {
 		return
 	}
 
-
 	subscription, err := h.subscriptionService.GetSubscriptionByID(uint(subscriptionID))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -230,7 +210,6 @@ func (h *SubscriptionHandler) GetSubscriptionByID(c *gin.Context) {
 		})
 		return
 	}
-
 
 	if subscription.UserID != userID {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -244,16 +223,13 @@ func (h *SubscriptionHandler) GetSubscriptionByID(c *gin.Context) {
 	})
 }
 
-
 func (h *SubscriptionHandler) SearchSubscriptions(c *gin.Context) {
 
 	userID := c.MustGet("userID").(uint)
 
-
 	query := c.Query("query")
 	status := c.Query("status")
 	sortBy := c.Query("sort_by")
-
 
 	subscriptions, err := h.subscriptionService.SearchSubscriptions(
 		userID,
@@ -273,11 +249,9 @@ func (h *SubscriptionHandler) SearchSubscriptions(c *gin.Context) {
 	})
 }
 
-
 func (h *SubscriptionHandler) RenewSubscription(c *gin.Context) {
 
 	userID := c.MustGet("userID").(uint)
-
 
 	subscriptionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
@@ -286,7 +260,6 @@ func (h *SubscriptionHandler) RenewSubscription(c *gin.Context) {
 		})
 		return
 	}
-
 
 	subscription, err := h.subscriptionService.GetSubscriptionByID(uint(subscriptionID))
 	if err != nil {
@@ -303,7 +276,6 @@ func (h *SubscriptionHandler) RenewSubscription(c *gin.Context) {
 		return
 	}
 
-
 	if err := h.subscriptionService.RenewSubscription(uint(subscriptionID)); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": "Ошибка при продлении подписки: " + err.Error(),
@@ -313,5 +285,56 @@ func (h *SubscriptionHandler) RenewSubscription(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Подписка успешно продлена",
+	})
+}
+
+// GetRelatedPlans возвращает все планы, связанные с указанным планом (месячные/годовые варианты)
+func (h *SubscriptionHandler) GetRelatedPlans(c *gin.Context) {
+	// Получаем ID плана из параметра запроса
+	planIDStr := c.Param("planId")
+	planID, err := strconv.ParseUint(planIDStr, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Неверный ID плана: " + err.Error(),
+		})
+		return
+	}
+
+	// Получаем связанные планы через сервис
+	relatedPlans, err := h.subscriptionService.GetRelatedPlans(uint(planID))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Ошибка при получении связанных планов: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"related_plans": relatedPlans,
+	})
+}
+
+// GetPlansForService возвращает все планы для указанного сервиса
+func (h *SubscriptionHandler) GetPlansForService(c *gin.Context) {
+	// Получаем название сервиса из запроса
+	serviceName := c.Query("name")
+	if serviceName == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Название сервиса не указано",
+		})
+		return
+	}
+
+	// Получаем все планы для сервиса
+	plans, err := h.subscriptionService.GetPlansForService(serviceName)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Ошибка при получении планов: " + err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"plans": plans,
 	})
 }
