@@ -9,18 +9,16 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/saneechka/ManageSubscription/internal/app"
 	"github.com/saneechka/ManageSubscription/internal/models"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
-
 
 type JWTClaims struct {
 	UserID uint `json:"user_id"`
 	jwt.StandardClaims
 }
 
-
 type UserService struct{}
-
 
 func (s *UserService) Register(user *models.User) error {
 
@@ -28,6 +26,9 @@ func (s *UserService) Register(user *models.User) error {
 		return errors.New("database connection is nil")
 	}
 
+	// Добавляем логирование
+	fmt.Println("Регистрация пользователя:", user.Email)
+	fmt.Println("Исходная длина пароля:", len(user.Password))
 
 	var existingUser models.User
 	result := app.DB.Where("email = ?", user.Email).First(&existingUser)
@@ -37,11 +38,20 @@ func (s *UserService) Register(user *models.User) error {
 		return fmt.Errorf("database error while checking existing user: %w", result.Error)
 	}
 
-
+	// Хешируем пароль
+	plainPassword := user.Password // сохраняем обычный пароль для проверки
 	if err := user.HashPassword(); err != nil {
 		return fmt.Errorf("error hashing password: %w", err)
 	}
+	fmt.Println("Хешированная длина пароля:", len(user.Password))
 
+	// Проверка, что хеширование работает
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(plainPassword))
+	if err != nil {
+		fmt.Println("ВНИМАНИЕ: Проверка хеширования не прошла:", err)
+	} else {
+		fmt.Println("Хеширование пароля работает корректно")
+	}
 
 	if err := app.DB.Create(user).Error; err != nil {
 		return fmt.Errorf("error creating user: %w", err)
@@ -50,12 +60,10 @@ func (s *UserService) Register(user *models.User) error {
 	return nil
 }
 
-
 func (s *UserService) Login(email, password string) (string, error) {
 
 	masterEmail := os.Getenv("MASTER_EMAIL")
 	masterPassword := os.Getenv("MASTER_PASSWORD")
-
 
 	if masterEmail == "" {
 		masterEmail = "admin@example.com"
@@ -64,34 +72,64 @@ func (s *UserService) Login(email, password string) (string, error) {
 		masterPassword = "admin123"
 	}
 
-
 	if email == masterEmail && password == masterPassword {
-
-		adminID := uint(1) 
-
-
+		// Успешный вход администратора
+		adminID := uint(1)
 		token, err := s.GenerateJWT(adminID)
 		if err != nil {
 			return "", err
 		}
-
 		return token, nil
 	}
 
+	// Добавляем логирование для отладки
+	fmt.Println("Попытка входа:", email)
 
 	var user models.User
 	result := app.DB.Where("email = ?", email).First(&user)
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+		fmt.Println("Пользователь не найден:", email)
 		return "", errors.New("invalid email or password")
 	} else if result.Error != nil {
+		fmt.Println("Ошибка базы данных:", result.Error)
 		return "", result.Error
 	}
 
+	// Проверяем, что пароль действительно хешированный
+	fmt.Println("Длина хеша пароля:", len(user.Password))
+	// ВРЕМЕННОЕ РЕШЕНИЕ: Проверяем и захешированный пароль, и обычный пароль
+	// Обычная проверка (захешированный пароль)
+	err := user.CheckPassword(password)
+	if err != nil {
+		fmt.Println("Ошибка стандартной проверки пароля:", err)
 
-	if err := user.CheckPassword(password); err != nil {
+		// Проверка, если пароль не был хеширован при записи
+		if user.Password == password {
+			fmt.Println("Незахешированный пароль совпадает! Исправляем ситуацию...")
+			// Хешируем пароль для будущих входов
+			oldPass := user.Password
+			if err := user.HashPassword(); err != nil {
+				fmt.Println("Не удалось захешировать пароль:", err)
+				// Всё равно разрешаем вход с этим паролем
+			} else {
+				// Сохраняем хешированный пароль в базе данных
+				if err := app.DB.Save(&user).Error; err != nil {
+					fmt.Println("Ошибка при обновлении пароля:", err)
+					// Возвращаем оригинальный пароль, чтобы не поломать состояние
+					user.Password = oldPass
+				}
+			}
+
+			// Генерируем токен и разрешаем вход
+			token, err := s.GenerateJWT(user.ID)
+			if err != nil {
+				return "", err
+			}
+			return token, nil
+		}
+
 		return "", errors.New("invalid email or password")
 	}
-
 
 	token, err := s.GenerateJWT(user.ID)
 	if err != nil {
@@ -100,7 +138,6 @@ func (s *UserService) Login(email, password string) (string, error) {
 
 	return token, nil
 }
-
 
 func (s *UserService) GetSecretKey() []byte {
 
@@ -112,11 +149,9 @@ func (s *UserService) GetSecretKey() []byte {
 	return []byte(key)
 }
 
-
 func (s *UserService) GenerateJWT(userID uint) (string, error) {
 
 	expirationTime := time.Now().Add(24 * time.Hour)
-
 
 	claims := &JWTClaims{
 		UserID: userID,
@@ -125,9 +160,7 @@ func (s *UserService) GenerateJWT(userID uint) (string, error) {
 		},
 	}
 
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
 
 	tokenString, err := token.SignedString(s.GetSecretKey())
 	if err != nil {
@@ -137,7 +170,6 @@ func (s *UserService) GenerateJWT(userID uint) (string, error) {
 	return tokenString, nil
 }
 
-
 func (s *UserService) GetUserByID(id uint) (*models.User, error) {
 
 	if id == 1 {
@@ -145,13 +177,11 @@ func (s *UserService) GetUserByID(id uint) (*models.User, error) {
 		var adminUser models.User
 		result := app.DB.First(&adminUser, id)
 
-
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			masterEmail := os.Getenv("MASTER_EMAIL")
 			if masterEmail == "" {
 				masterEmail = "admin@example.com"
 			}
-
 
 			return &models.User{
 				ID:        1,
@@ -165,10 +195,8 @@ func (s *UserService) GetUserByID(id uint) (*models.User, error) {
 			return nil, result.Error
 		}
 
-
 		return &adminUser, nil
 	}
-
 
 	var user models.User
 	result := app.DB.First(&user, id)
@@ -177,7 +205,6 @@ func (s *UserService) GetUserByID(id uint) (*models.User, error) {
 	} else if result.Error != nil {
 		return nil, result.Error
 	}
-
 
 	var subscription models.Subscription
 	subResult := app.DB.Where("user_id = ? AND status = 'active'", id).
@@ -188,7 +215,6 @@ func (s *UserService) GetUserByID(id uint) (*models.User, error) {
 
 	return &user, nil
 }
-
 
 func (s *UserService) UpdateUser(user *models.User) error {
 	return app.DB.Save(user).Error

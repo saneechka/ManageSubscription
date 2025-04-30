@@ -14,7 +14,7 @@ type User struct {
 	UpdatedAt     time.Time      `json:"updated_at"`
 	DeletedAt     gorm.DeletedAt `gorm:"index" json:"-"`
 	Email         string         `gorm:"type:varchar(100);uniqueIndex" json:"email"`
-	Password      string         `gorm:"type:varchar(100)" json:"-"`
+	Password      string         `gorm:"type:varchar(100)" json:"password"`
 	FirstName     string         `gorm:"type:varchar(100)" json:"first_name"`
 	LastName      string         `gorm:"type:varchar(100)" json:"last_name"`
 	ActivePlan    *Subscription  `gorm:"foreignkey:UserID;references:ID" json:"active_plan,omitempty"`

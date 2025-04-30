@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/saneechka/ManageSubscription/internal/services"
+	serializer "github.com/saneechka/serializer/gin"
 )
 
 type SubscriptionHandler struct {
@@ -24,13 +25,13 @@ func (h *SubscriptionHandler) GetUserSubscriptions(c *gin.Context) {
 
 	subscriptions, err := h.subscriptionService.GetUserSubscriptions(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Error retrieving subscriptions: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"subscriptions": subscriptions,
 	})
 }
@@ -40,13 +41,13 @@ func (h *SubscriptionHandler) GetActiveSubscriptions(c *gin.Context) {
 
 	subscriptions, err := h.subscriptionService.GetActiveSubscriptions(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Error retrieving active subscriptions: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"active_subscriptions": subscriptions,
 	})
 }
@@ -57,13 +58,13 @@ func (h *SubscriptionHandler) GetSubscriptionStats(c *gin.Context) {
 
 	stats, err := h.subscriptionService.GetSubscriptionStats(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Error retrieving subscription stats: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"stats": stats,
 	})
 }
@@ -78,8 +79,8 @@ func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 	userID := c.MustGet("userID").(uint)
 
 	var request SubscribeRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+	if err := serializer.MyBindJSON(c, &request); err != nil {
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{
 			"error": "Invalid request data: " + err.Error(),
 		})
 		return
@@ -87,13 +88,13 @@ func (h *SubscriptionHandler) Subscribe(c *gin.Context) {
 
 	subscription, err := h.subscriptionService.Subscribe(userID, request.PlanID, request.PaymentID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Error creating subscription: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
+	serializer.MyJSON(c, http.StatusCreated, gin.H{
 		"subscription": subscription,
 		"message":      "Подписка успешно оформлена",
 	})
@@ -105,7 +106,7 @@ func (h *SubscriptionHandler) CancelSubscription(c *gin.Context) {
 
 	subscriptionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{
 			"error": "Invalid subscription ID",
 		})
 		return
@@ -113,14 +114,14 @@ func (h *SubscriptionHandler) CancelSubscription(c *gin.Context) {
 
 	subscription, err := h.subscriptionService.GetSubscriptionByID(uint(subscriptionID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Error verifying subscription: " + err.Error(),
 		})
 		return
 	}
 
 	if subscription.UserID != userID {
-		c.JSON(http.StatusNotFound, gin.H{
+		serializer.MyJSON(c, http.StatusNotFound, gin.H{
 			"error": "Subscription not found or not owned by user",
 		})
 		return
@@ -128,13 +129,13 @@ func (h *SubscriptionHandler) CancelSubscription(c *gin.Context) {
 
 	err = h.subscriptionService.CancelSubscription(uint(subscriptionID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Error cancelling subscription: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"message": "Подписка успешно отменена",
 	})
 }
@@ -149,7 +150,7 @@ func (h *SubscriptionHandler) UpdateAutoRenewal(c *gin.Context) {
 
 	subscriptionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{
 			"error": "Invalid subscription ID",
 		})
 		return
@@ -157,22 +158,22 @@ func (h *SubscriptionHandler) UpdateAutoRenewal(c *gin.Context) {
 
 	subscription, err := h.subscriptionService.GetSubscriptionByID(uint(subscriptionID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Error verifying subscription: " + err.Error(),
 		})
 		return
 	}
 
 	if subscription.UserID != userID {
-		c.JSON(http.StatusNotFound, gin.H{
+		serializer.MyJSON(c, http.StatusNotFound, gin.H{
 			"error": "Subscription not found or not owned by user",
 		})
 		return
 	}
 
 	var request AutoRenewRequest
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+	if err := serializer.MyBindJSON(c, &request); err != nil {
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{
 			"error": "Invalid request data: " + err.Error(),
 		})
 		return
@@ -180,13 +181,13 @@ func (h *SubscriptionHandler) UpdateAutoRenewal(c *gin.Context) {
 
 	err = h.subscriptionService.UpdateAutoRenewal(uint(subscriptionID), request.AutoRenew)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Error updating auto-renewal: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"message": "Настройки автопродления успешно обновлены",
 	})
 }
@@ -197,7 +198,7 @@ func (h *SubscriptionHandler) GetSubscriptionByID(c *gin.Context) {
 
 	subscriptionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{
 			"error": "Неверный ID подписки",
 		})
 		return
@@ -205,20 +206,20 @@ func (h *SubscriptionHandler) GetSubscriptionByID(c *gin.Context) {
 
 	subscription, err := h.subscriptionService.GetSubscriptionByID(uint(subscriptionID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Ошибка при получении подписки: " + err.Error(),
 		})
 		return
 	}
 
 	if subscription.UserID != userID {
-		c.JSON(http.StatusNotFound, gin.H{
+		serializer.MyJSON(c, http.StatusNotFound, gin.H{
 			"error": "Подписка не найдена или не принадлежит пользователю",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"subscription": subscription,
 	})
 }
@@ -238,13 +239,13 @@ func (h *SubscriptionHandler) SearchSubscriptions(c *gin.Context) {
 		sortBy,
 	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Ошибка при поиске подписок: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"subscriptions": subscriptions,
 	})
 }
@@ -255,7 +256,7 @@ func (h *SubscriptionHandler) RenewSubscription(c *gin.Context) {
 
 	subscriptionID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{
 			"error": "Неверный ID подписки",
 		})
 		return
@@ -263,27 +264,27 @@ func (h *SubscriptionHandler) RenewSubscription(c *gin.Context) {
 
 	subscription, err := h.subscriptionService.GetSubscriptionByID(uint(subscriptionID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Ошибка при получении подписки: " + err.Error(),
 		})
 		return
 	}
 
 	if subscription.UserID != userID {
-		c.JSON(http.StatusNotFound, gin.H{
+		serializer.MyJSON(c, http.StatusNotFound, gin.H{
 			"error": "Подписка не найдена или не принадлежит пользователю",
 		})
 		return
 	}
 
 	if err := h.subscriptionService.RenewSubscription(uint(subscriptionID)); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Ошибка при продлении подписки: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"message": "Подписка успешно продлена",
 	})
 }
@@ -294,7 +295,7 @@ func (h *SubscriptionHandler) GetRelatedPlans(c *gin.Context) {
 	planIDStr := c.Param("planId")
 	planID, err := strconv.ParseUint(planIDStr, 10, 32)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{
 			"error": "Неверный ID плана: " + err.Error(),
 		})
 		return
@@ -303,13 +304,13 @@ func (h *SubscriptionHandler) GetRelatedPlans(c *gin.Context) {
 	// Получаем связанные планы через сервис
 	relatedPlans, err := h.subscriptionService.GetRelatedPlans(uint(planID))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Ошибка при получении связанных планов: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"related_plans": relatedPlans,
 	})
 }
@@ -319,7 +320,7 @@ func (h *SubscriptionHandler) GetPlansForService(c *gin.Context) {
 	// Получаем название сервиса из запроса
 	serviceName := c.Query("name")
 	if serviceName == "" {
-		c.JSON(http.StatusBadRequest, gin.H{
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{
 			"error": "Название сервиса не указано",
 		})
 		return
@@ -328,13 +329,13 @@ func (h *SubscriptionHandler) GetPlansForService(c *gin.Context) {
 	// Получаем все планы для сервиса
 	plans, err := h.subscriptionService.GetPlansForService(serviceName)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
+		serializer.MyJSON(c, http.StatusInternalServerError, gin.H{
 			"error": "Ошибка при получении планов: " + err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
+	serializer.MyJSON(c, http.StatusOK, gin.H{
 		"plans": plans,
 	})
 }
