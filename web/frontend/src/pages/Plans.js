@@ -4,61 +4,71 @@ import { useNavigate } from 'react-router-dom';
 import { Search } from 'react-bootstrap-icons';
 import { plansAPI, subscriptionsAPI } from '../utils/api';
 import SubscriptionPeriodModal from '../components/SubscriptionPeriodModal';
+// Импорт иконок из библиотеки React Icons - с исправленными иконками
+import { 
+  SiGoogle, 
+  SiSpotify, 
+  SiNetflix, 
+  SiApple
+} from 'react-icons/si';
+import { FaYandex, FaFilm, FaVideo, FaPlayCircle } from 'react-icons/fa';
+import { RiMovie2Fill } from 'react-icons/ri';
+import { MdMovieFilter } from 'react-icons/md';
 
 
 const POPULAR_SERVICES = [
   { 
     id: 'yandex-plus', 
     name: 'Яндекс Плюс',
-    icon: '🔍', 
+    icon: <FaYandex />, 
     color: '#ffcc00' 
   },
   { 
     id: 'google-one', 
     name: 'Google One',
-    icon: '☁️',
+    icon: <SiGoogle />,
     color: '#4285F4' 
   },
   { 
     id: 'spotify', 
     name: 'Spotify Premium',
-    icon: '🎵',
+    icon: <SiSpotify />,
     color: '#1ED760' 
   },
   { 
     id: 'netflix', 
     name: 'Netflix',
-    icon: '📺',
+    icon: <SiNetflix />,
     color: '#E50914' 
   },
   { 
     id: 'apple-one', 
     name: 'Apple One',
-    icon: '🍎',
+    icon: <SiApple />,
     color: '#A2AAAD' 
   },
   {
     id: 'kinopoisk',
     name: 'Кинопоиск HD',
-    icon: '🎬',
+    icon: <FaFilm />,
     color: '#f60'
   },
   {
     id: 'amediateka',
     name: 'Amediateka',
-    icon: '📽️',
+    icon: <RiMovie2Fill />,
     color: '#000000'
   },
   {
     id: 'ivi',
     name: 'IVI',
-    icon: '🎦',
+    icon: <FaPlayCircle />,
     color: '#ea003d'
   },
   {
     id: 'premier',
     name: 'Premier',
-    icon: '🎞️',
+    icon: <MdMovieFilter />,
     color: '#6236ff'
   }
 ];
@@ -193,9 +203,17 @@ const Plans = () => {
         (p.duration >= 364 && p.duration <= 366)
       );
       
+      // Получаем иконку и цвет для сервиса
+      const serviceIcon = getServiceIcon(service.name);
+      const serviceColor = getServiceColor(service.name);
+      
       setMonthlyPlan(monthPlan || null);
       setYearlyPlan(yearPlan || null);
-      setSelectedService({ name: service.name });
+      setSelectedService({ 
+        name: service.name,
+        icon: serviceIcon,
+        color: serviceColor 
+      });
       setShowPeriodModal(true);
       
     } catch (err) {
@@ -260,7 +278,25 @@ const Plans = () => {
       serviceName.toLowerCase().includes(s.name.toLowerCase()) || 
       s.name.toLowerCase().includes(serviceName.toLowerCase())
     );
-    return service ? service.icon : '📱';
+    
+    // Используем соответствующую иконку из списка популярных или иконку по умолчанию
+    if (service) {
+      return service.icon;
+    } else {
+      // Определяем категорию сервиса по имени и выбираем соответствующую иконку
+      const name = serviceName.toLowerCase();
+      if (name.includes('кино') || name.includes('видео') || name.includes('фильм') || name.includes('тв')) {
+        return <RiMovie2Fill />;
+      } else if (name.includes('музыка') || name.includes('аудио')) {
+        return <SiSpotify />;
+      } else if (name.includes('хранилище') || name.includes('диск') || name.includes('облако')) {
+        return <SiGoogle />; 
+      } else {
+        // Импортируем дополнительно иконку приложения по умолчанию
+        const { FaMobileAlt } = require('react-icons/fa');
+        return <FaMobileAlt />;
+      }
+    }
   };
 
   // Находим цвет для сервиса из списка популярных
@@ -294,6 +330,8 @@ const Plans = () => {
         monthlyPlan={monthlyPlan}
         yearlyPlan={yearlyPlan}
         onSubscribe={handleSubscribe}
+                  serviceIcon={selectedService?.icon}
+        serviceColor={selectedService?.color}
       />
 
       <Row className="mb-4">
@@ -340,7 +378,21 @@ const Plans = () => {
                 style={{ cursor: 'pointer', borderColor: service.color }}
               >
                 <Card.Body className="d-flex flex-column justify-content-center align-items-center">
-                  <div className="service-icon mb-2" style={{ fontSize: '2rem' }}>
+                  <div 
+                    className="service-icon mb-2" 
+                    style={{ 
+                      fontSize: '2.5rem', 
+                      color: service.color,
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      borderRadius: '50%',
+                      width: '60px',
+                      height: '60px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 3px 8px rgba(0,0,0,0.1)'
+                    }}
+                  >
                     {service.icon}
                   </div>
                   <div className="service-name">
@@ -378,9 +430,23 @@ const Plans = () => {
                 onMouseLeave={() => setHoveredServiceId(null)}
               >
                 <Card.Header as="h5" className="d-flex align-items-center">
-                  <span className="me-2" style={{ fontSize: '1.5rem' }}>
+                  <div 
+                    className="me-3" 
+                    style={{ 
+                      fontSize: '1.8rem', 
+                      color: getServiceColor(service.name),
+                      backgroundColor: 'rgba(255,255,255,0.9)',
+                      borderRadius: '50%',
+                      width: '45px',
+                      height: '45px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.08)'
+                    }}
+                  >
                     {getServiceIcon(service.name)}
-                  </span>
+                  </div>
                   {service.name}
                 </Card.Header>
                 <Card.Body className="d-flex flex-column">

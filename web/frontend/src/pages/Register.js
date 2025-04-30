@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Container, Form, Button, Alert } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
+import { userAPI } from '../utils/api';
 
 const Register = ({ onRegister }) => {
   const [formData, setFormData] = useState({
@@ -11,6 +12,7 @@ const Register = ({ onRegister }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -24,50 +26,45 @@ const Register = ({ onRegister }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setSuccess('');
+
+    // Проверка наличия пароля
+    if (!formData.password || formData.password.trim() === '') {
+      setError('Пароль обязателен для регистрации');
+      setLoading(false);
+      return;
+    }
+
+    // Проверка минимальной длины пароля
+    if (formData.password.length < 8) {
+      setError('Пароль должен содержать не менее 8 символов');
+      setLoading(false);
+      return;
+    }
 
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      // Register the user without getting token
+      const registerResponse = await userAPI.register(formData);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Ошибка регистрации');
+      if (!registerResponse || registerResponse.error) {
+        throw new Error(registerResponse?.error || 'Ошибка регистрации');
       }
-
-      // Вход после успешной регистрации
-      const loginResponse = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        }),
-      });
-
-      const loginData = await loginResponse.json();
-
-      if (!loginResponse.ok) {
-        throw new Error(loginData.error || 'Не удалось войти после регистрации');
-      }
-
-      // Сохраняем токен в localStorage
-      localStorage.setItem('token', loginData.token);
       
-      // Обновляем статус авторизации
-      onRegister();
+      // Show success message
+      setSuccess('Регистрация прошла успешно! Сейчас вы будете перенаправлены на страницу входа.');
       
-      // Перенаправляем в личный кабинет
-      navigate('/dashboard');
+      // After 2 seconds, redirect to login page
+      setTimeout(() => {
+        navigate('/login', { 
+          state: { 
+            email: formData.email,
+            registrationSuccess: true 
+          } 
+        });
+      }, 2000);
     } catch (err) {
-      setError(err.message);
+      console.error('Registration error:', err);
+      setError(err.message || 'Произошла ошибка при регистрации');
     } finally {
       setLoading(false);
     }
@@ -79,6 +76,7 @@ const Register = ({ onRegister }) => {
         <h2 className="text-center mb-4">Регистрация</h2>
         
         {error && <Alert variant="danger">{error}</Alert>}
+        {success && <Alert variant="success">{success}</Alert>}
         
         <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3" controlId="formFirstName">

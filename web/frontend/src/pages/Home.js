@@ -2,32 +2,40 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Badge } from 'react-bootstrap';
 import { plansAPI } from '../utils/api';
-
+import { 
+  SiGoogle, 
+  SiSpotify, 
+  SiNetflix, 
+  SiApple
+} from 'react-icons/si';
+import { FaYandex, FaFilm, FaVideo, FaPlayCircle } from 'react-icons/fa';
+import { RiMovie2Fill } from 'react-icons/ri';
+import { MdMovieFilter } from 'react-icons/md';
 
 const serviceIcons = [
   {
     name: 'Яндекс Плюс',
-    icon: '🔍'
+    icon: <FaYandex />, 
   },
   {
     name: 'Netflix',
-    icon: '📺'
+ icon: <SiNetflix />,
   },
   {
     name: 'Spotify',
-    icon: '🎵'
+  icon: <SiSpotify />,
   },
   {
     name: 'Apple One',
-    icon: '🍎'
+ icon: <SiApple />,
   },
   {
     name: 'Google One',
-    icon: '☁️'
+      icon: <SiGoogle />,
   },
   {
     name: 'Кинопоиск',
-    icon: '🎬'
+  icon: <FaFilm />,
   }
 ];
 

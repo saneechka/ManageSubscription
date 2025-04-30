@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Modal, Button, Card, Row, Col, Badge } from 'react-bootstrap';
+// Импортируем иконки по умолчанию для случаев, когда иконка не передана
+import { FaMobileAlt } from 'react-icons/fa';
 
 /**
  * Модальное окно для выбора срока подписки (месяц/год)
  */
-const SubscriptionPeriodModal = ({ show, onHide, service, monthlyPlan, yearlyPlan, onSubscribe }) => {
+const SubscriptionPeriodModal = ({ show, onHide, service, monthlyPlan, yearlyPlan, onSubscribe, serviceIcon, serviceColor }) => {
   const [hoveredPlan, setHoveredPlan] = useState(null);
 
   // Вычисляем экономию для годового плана если есть и месячный и годовой планы
@@ -71,7 +73,28 @@ const SubscriptionPeriodModal = ({ show, onHide, service, monthlyPlan, yearlyPla
   return (
     <Modal show={show} onHide={onHide} centered size="lg">
       <Modal.Header closeButton>
-        <Modal.Title>Подписка на {service?.name || 'сервис'}</Modal.Title>
+        <div className="d-flex align-items-center">
+          {serviceIcon && (
+            <div 
+              className="me-3" 
+              style={{ 
+                fontSize: '1.8rem', 
+                color: serviceColor || '#6c757d',
+                backgroundColor: 'rgba(255,255,255,0.9)',
+                borderRadius: '50%',
+                width: '45px',
+                height: '45px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.08)'
+              }}
+            >
+              {serviceIcon || <FaMobileAlt />}
+            </div>
+          )}
+          <Modal.Title>Подписка на {service?.name || 'сервис'}</Modal.Title>
+        </div>
       </Modal.Header>
       <Modal.Body>
         <Row className="d-flex align-items-stretch">
