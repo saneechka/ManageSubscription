@@ -57,6 +57,10 @@ func main() {
 		api.POST("/register", userHandler.Register)
 		api.POST("/login", userHandler.Login)
 
+		// Новые маршруты для подтверждения email
+		api.GET("/verify-email", userHandler.VerifyEmail)
+		api.POST("/resend-verification", userHandler.ResendVerification)
+
 		// Эндпоинты для планов
 		// Важно: более специфичные маршруты должны быть выше, чем общие
 		api.GET("/plans/filter", planHandler.FilterPlansByPrice)

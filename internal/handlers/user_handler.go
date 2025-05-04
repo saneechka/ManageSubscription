@@ -26,18 +26,48 @@ func (h *UserHandler) Register(c *gin.Context) {
 		return
 	}
 
-
 	if err := h.userService.Register(&user); err != nil {
 		serializer.MyJSON(c, http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-
-
 	serializer.MyJSON(c, http.StatusCreated, gin.H{
-		"message": "User registered successfully",
+		"message": "Регистрация прошла успешно. Проверьте вашу электронную почту для подтверждения аккаунта.",
 		"user":    user,
 	})
+}
+
+func (h *UserHandler) VerifyEmail(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{"error": "Токен подтверждения отсутствует"})
+		return
+	}
+
+	if err := h.userService.VerifyEmail(token); err != nil {
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{"error": "Ошибка подтверждения email: " + err.Error()})
+		return
+	}
+
+	serializer.MyJSON(c, http.StatusOK, gin.H{"message": "Email успешно подтвержден. Теперь вы можете войти в систему."})
+}
+
+func (h *UserHandler) ResendVerification(c *gin.Context) {
+	var req struct {
+		Email string `json:"email" binding:"required,email"`
+	}
+
+	if err := serializer.MyBindJSON(c, &req); err != nil {
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.userService.ResendVerificationEmail(req.Email); err != nil {
+		serializer.MyJSON(c, http.StatusBadRequest, gin.H{"error": "Ошибка отправки письма: " + err.Error()})
+		return
+	}
+
+	serializer.MyJSON(c, http.StatusOK, gin.H{"message": "Письмо с подтверждением отправлено повторно. Проверьте вашу электронную почту."})
 }
 
 func (h *UserHandler) Login(c *gin.Context) {

@@ -11,6 +11,7 @@ import Register from './pages/Register';
 import Plans from './pages/Plans';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+import VerifyEmail from './pages/VerifyEmail';
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
@@ -76,6 +77,7 @@ function App() {
         <Route path="/register" element={
           isAuthenticated ? <Navigate to="/dashboard" /> : <Register onRegister={() => setIsAuthenticated(true)} />
         } />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/plans" element={<Plans />} />
         <Route 
           path="/dashboard" 

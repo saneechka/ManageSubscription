@@ -51,17 +51,18 @@ const Register = ({ onRegister }) => {
       }
       
       // Show success message
-      setSuccess('Регистрация прошла успешно! Сейчас вы будете перенаправлены на страницу входа.');
+      setSuccess('Регистрация прошла успешно! Проверьте вашу электронную почту для подтверждения аккаунта. После подтверждения вы сможете войти в систему.');
       
-      // After 2 seconds, redirect to login page
+      // After 5 seconds, redirect to login page
       setTimeout(() => {
         navigate('/login', { 
           state: { 
             email: formData.email,
-            registrationSuccess: true 
+            registrationSuccess: true,
+            needEmailVerification: true 
           } 
         });
-      }, 2000);
+      }, 5000);
     } catch (err) {
       console.error('Registration error:', err);
       setError(err.message || 'Произошла ошибка при регистрации');

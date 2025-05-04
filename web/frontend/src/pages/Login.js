@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Form, Button, Alert } from 'react-bootstrap';
+import { Container, Form, Button, Alert, Card } from 'react-bootstrap';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { userAPI } from '../utils/api';
 
@@ -8,7 +8,11 @@ const Login = ({ onLogin }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendSuccess, setResendSuccess] = useState('');
+  const [resendError, setResendError] = useState('');
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [needVerification, setNeedVerification] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,7 +28,40 @@ const Login = ({ onLogin }) => {
     if (location.state?.registrationSuccess) {
       setRegistrationSuccess(true);
     }
+
+    if (location.state?.needEmailVerification) {
+      setNeedVerification(true);
+    }
   }, [location.state]);
+
+  const handleResendVerification = async () => {
+    setResendLoading(true);
+    setResendError('');
+    setResendSuccess('');
+
+    try {
+      const response = await fetch('/api/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Не удалось отправить письмо с подтверждением');
+      }
+      
+      setResendSuccess(data.message || 'Письмо с подтверждением отправлено. Пожалуйста, проверьте вашу почту.');
+    } catch (err) {
+      console.error('Error resending verification email:', err);
+      setResendError(err.message || 'Произошла ошибка при отправке письма');
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -82,6 +119,9 @@ const Login = ({ onLogin }) => {
         setError('Проблема с подключением к серверу. Пожалуйста, проверьте интернет-соединение.');
       } else if (err.message.includes('invalid email or password')) {
         setError('Неверный email или пароль. Пожалуйста, проверьте правильность ввода данных.');
+      } else if (err.message.includes('email not verified')) {
+        setError('Email не подтвержден. Пожалуйста, проверьте вашу почту или запросите новое письмо с подтверждением.');
+        setNeedVerification(true);
       } else {
         setError(err.message || 'Произошла ошибка при входе. Пожалуйста, попробуйте снова.');
       }
@@ -95,10 +135,33 @@ const Login = ({ onLogin }) => {
       <div className="auth-form">
         <h2 className="text-center mb-4">Вход в систему</h2>
         
-        {registrationSuccess && (
+        {registrationSuccess && !needVerification && (
           <Alert variant="success" onClose={() => setRegistrationSuccess(false)} dismissible>
             Регистрация прошла успешно! Пожалуйста, войдите в систему, используя ваш email и пароль.
           </Alert>
+        )}
+        
+        {needVerification && (
+          <Card className="mb-4 border-warning">
+            <Card.Body>
+              <Card.Title>Требуется подтверждение email</Card.Title>
+              <Card.Text>
+                Для входа в систему необходимо подтвердить ваш email. Проверьте папку "Входящие" и "Спам" на наличие письма с подтверждением.
+              </Card.Text>
+              
+              {resendError && <Alert variant="danger" className="mt-2">{resendError}</Alert>}
+              {resendSuccess && <Alert variant="success" className="mt-2">{resendSuccess}</Alert>}
+              
+              <Button 
+                variant="outline-primary" 
+                onClick={handleResendVerification}
+                disabled={resendLoading}
+                className="mt-2"
+              >
+                {resendLoading ? 'Отправка...' : 'Отправить письмо повторно'}
+              </Button>
+            </Card.Body>
+          </Card>
         )}
         
         {error && <Alert variant="danger">{error}</Alert>}
